@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html id="htmlTag" lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2c3e50">
+<link rel="apple-touch-icon" href="icon-512.png">
+
+<script>
+  // تفعيل السيرفس وركر للعمل بدون إنترنت
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('PWA Ready!', reg))
+        .catch(err => console.log('PWA Error', err));
+    });
+  }
+</script>نظام تدبير الحصص - النسخة الاحترافية ثنائية اللغة</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #2980b9; --success: #27ae60; --danger: #e74c3c; --coffee: #6f4e37; --gold: #d4a017; }
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; margin: 0; background: #f4f4f4; color: #333; transition: 0.3s; }
+        
+        /* الهيدر والأزرار */
+        .nav-bar { background: var(--primary); display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; position: sticky; top: 0; z-index: 1000; color: white; }
+        .dropbtn { background: var(--accent); color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content { display: none; position: absolute; background: white; min-width: 160px; box-shadow: 0 8px 16px rgba(0,0,0,0.2); z-index: 1; border-radius: 8px; right: 0; }
+        .dropdown-content button { color: #333; padding: 12px 16px; display: block; width: 100%; border: none; background: none; text-align: inherit; cursor: pointer; border-bottom: 1px solid #eee; }
+        .dropdown:hover .dropdown-content { display: block; }
+        
+        .lang-btn { background: var(--gold); color: white; padding: 8px 15px; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+
+        .tab-content { display: none; padding: 20px; max-width: 1100px; margin: auto; }
+        .tab-content.active { display: block; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        
+        .grid-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; align-items: end; }
+        .field-group { display: flex; flex-direction: column; gap: 5px; }
+        .full-width { grid-column: 1 / -1; }
+        input, select, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit; }
+        
+        .btn { padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn-add { background: var(--success); }
+        .btn-danger { background: var(--danger); padding: 5px 10px; }
+        
+        /* الجدول والتقرير */
+        .editable-cell { background: #fffde7; border: 1px dashed var(--accent) !important; cursor: text; outline: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; font-size: 0.9rem; }
+        th, td { border: 1px solid #999; padding: 10px; text-align: center; overflow-wrap: break-word; }
+        th { background: #f0f0f0; color: #2c3e50; }
+        .break-row { background-color: #fef9e7 !important; }
+
+        .report-day-box { margin-bottom: 30px; border: 1px solid #ccc; padding: 20px; border-radius: 10px; background: #fff; }
+        .report-header-info { display: flex; justify-content: space-between; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 2px solid var(--primary); font-weight: bold; }
+        .report-footer { margin-top: 30px; display: none; justify-content: space-between; font-weight: bold; border-top: 2px solid #333; padding-top: 20px; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; background: #f9f9f9; padding: 8px; margin-bottom: 5px; border-radius: 5px; border: 1px solid #eee; }
+
+        /* الطباعة */
+        @media print {
+            .nav-bar, .no-print, .btn, .dropdown, #main-tab, #manage-tab, .btn-danger, input[type="date"], label { display: none !important; }
+            body { background: white; }
+            .tab-content { display: block !important; padding: 0; }
+            #pdfArea { display: block !important; box-shadow: none; border: none; padding: 0; }
+            .report-day-box { page-break-inside: avoid; border: 1px solid #000; margin-bottom: 20px; }
+            .report-footer { display: flex !important; position: fixed; bottom: 0; width: 100%; background: white; }
+            th { background: #eee !important; -webkit-print-color-adjust: exact; }
+            table, td, th { border: 1px solid #000; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="nav-bar">
+        <div style="display: flex; align-items: center;">
+            <div class="dropdown">
+                <button class="dropbtn" id="menuBtn">☰ القائمة</button>
+                <div class="dropdown-content">
+                    <button onclick="switchTab('main-tab')" id="navHome">🏠 الرئيسية</button>
+                    <button onclick="switchTab('manage-tab')" id="navSettings">⚙️ الإعدادات</button>
+                    <button onclick="switchTab('report-tab')" id="navReport">📄 التقرير</button>
+                </div>
+            </div>
+            <button class="lang-btn" onclick="toggleLanguage()">Français / عربي</button>
+        </div>
+        <div id="liveClock" style="font-weight:bold; font-family: monospace;"></div>
+    </nav>
+
+    <div id="main-tab" class="tab-content active">
+        <div class="card">
+            <div class="grid-inputs">
+                <div class="field-group"><label id="lblDate">التاريخ</label><input type="date" id="lessonDate" onchange="loadDayData()"></div>
+                <div class="field-group" style="flex-direction:row; gap:5px; grid-column: span 2;">
+                    <button class="btn" style="background:var(--gold)" onclick="applyDayTemplate()" id="btnApplyTemplate">✨ تطبيق النموذج</button>
+                    <button class="btn" style="background:var(--primary)" onclick="saveAsDayTemplate()" id="btnSaveTemplate">💾 حفظ كنموذج</button>
+                </div>
+                <div class="field-group"><label id="lblPeriod">المرحلة</label><select id="period" onchange="saveDayData()"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+                <div class="field-group"><label id="lblWeek">الأسبوع</label><select id="week" onchange="saveDayData()"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="grid-inputs">
+                <div class="field-group"><label id="lblStart">البدء</label><input type="time" id="tFrom"></div>
+                <div class="field-group"><label id="lblDur">المدة</label><select id="durationSelect"></select></div>
+                <div class="field-group"><label id="lblLvl">المستوى</label><select id="levelSelect"></select></div>
+                <div class="field-group"><label id="lblGrp">الفوج</label><select id="groupSelect"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+                <div class="field-group"><label id="lblSubj">المادة</label><select id="subjectSelect"></select></div>
+                <div class="field-group full-width" style="display:flex; gap:10px;">
+                    <button class="btn btn-add" style="flex:2" onclick="processEntry('lesson')" id="btnAddLesson">إضافة حصة +</button>
+                    <div style="display:flex; flex:1; gap:5px;">
+                        <select id="breakSelect" style="flex:1"></select>
+                        <button class="btn" style="background:var(--coffee); flex:1" onclick="processEntry('break')" id="btnBreak">☕ استراحة</button>
+                    </div>
+                </div>
+                <div class="field-group full-width"><label id="lblNotes">ملاحظات اليوم</label><textarea id="generalNotes" rows="2" oninput="saveDayData()"></textarea></div>
+            </div>
+        </div>
+
+        <div class="card" style="overflow-x:auto;">
+            <table id="mainTable">
+                <thead>
+                    <tr><th id="thTime">الوقت</th><th id="thLevel">المستوى</th><th id="thGroup">الفوج</th><th id="thSubject">المادة</th><th id="thTitle">العنوان (تعديل ✍️)</th><th id="thCard">جذاذة</th><th style="width:45px">X</th></tr>
+                </thead>
+                <tbody id="mainTbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="manage-tab" class="tab-content">
+        <div class="card">
+            <h3 id="setInfoTitle">📋 معلومات الترويسة</h3>
+            <div class="grid-inputs">
+                <div class="field-group"><label id="lblDir">المديرية</label><input type="text" id="dirName" oninput="saveSettings()"></div>
+                <div class="field-group"><label id="lblSchool">المؤسسة</label><input type="text" id="schoolName" oninput="saveSettings()"></div>
+                <div class="field-group"><label id="lblTeacher">الأستاذ(ة)</label><input type="text" id="teacherName" oninput="saveSettings()"></div>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+            <div class="card"><h3 id="setSubj">📚 المواد</h3><div style="display:flex;gap:5px"><input id="nS" style="flex:1"><button class="btn btn-add" onclick="addItem('subjects','nS')">+</button></div><div id="subCont" style="margin-top:10px;"></div></div>
+            <div class="card"><h3 id="setLvls">🎓 المستويات</h3><div style="display:flex;gap:5px"><input id="nL" style="flex:1"><button class="btn btn-add" onclick="addItem('levels','nL')">+</button></div><div id="lvlCont" style="margin-top:10px;"></div></div>
+            <div class="card"><h3 id="setDurs">⏳ مدد الحصص</h3><div style="display:flex;gap:5px"><input type="number" id="nD" style="flex:1"><button class="btn btn-add" onclick="addItem('durations','nD')">+</button></div><div id="durCont" style="margin-top:10px;"></div></div>
+            <div class="card"><h3 id="setBrks">☕ مدد الاستراحة</h3><div style="display:flex;gap:5px"><input type="number" id="nB" style="flex:1"><button class="btn btn-add" onclick="addItem('breaks','nB')">+</button></div><div id="brkCont" style="margin-top:10px;"></div></div>
+        </div>
+    </div>
+
+    <div id="report-tab" class="tab-content">
+        <div class="card no-print">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <label id="lblFrom">من</label><input type="date" id="reportDate1">
+                <label id="lblTo">إلى</label><input type="date" id="reportDate2">
+                <button class="btn btn-add" onclick="syncReport()" id="btnShow">تحديث</button>
+                <button class="btn" style="background:var(--accent)" onclick="window.print()" id="btnSavePdf">حفظ PDF ⬇️</button>
+            </div>
+        </div>
+        <div id="pdfArea">
+            <div id="reportContainer"></div>
+            <div id="footerSection" class="report-footer">
+                <div id="fDir"></div><div id="fSchool"></div><div id="fTeacher"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = localStorage.getItem('lang') || 'ar';
+        const dict = {
+            ar: {
+                menu: "☰ القائمة", home: "🏠 الرئيسية", settings: "⚙️ الإعدادات", report: "📄 التقرير",
+                date: "التاريخ", applyTemplate: "✨ تطبيق النموذج", saveTemplate: "💾 حفظ كنموذج",
+                period: "المرحلة", week: "الأسبوع", start: "البدء", dur: "المدة", lvl: "المستوى",
+                grp: "الفوج", subj: "المادة", addLesson: "إضافة حصة +", break: "☕ استراحة",
+                notes: "ملاحظات اليوم", thTime: "الوقت", thLvl: "المستوى", thGrp: "الفوج",
+                thSubj: "المادة", thTitle: "العنوان (تعديل ✍️)", thCard: "جذاذة",
+                setInfo: "📋 معلومات الترويسة", setDir: "المديرية", setSchool: "المؤسسة",
+                setTeacher: "الأستاذ(ة)", setSubj: "📚 المواد", setLvls: "🎓 المستويات",
+                setDurs: "⏳ مدد الحصص", setBrks: "☕ مدد الاستراحة", from: "من", to: "إلى",
+                show: "تحديث وعرض", savePdf: "حفظ بتنسيق PDF", breakLabel: "استراحة",
+                confirmDel: "حذف بيانات هذا اليوم؟", savedMsg: "تم الحفظ كنموذج!"
+            },
+            fr: {
+                menu: "☰ Menu", home: "🏠 Accueil", settings: "⚙️ Paramètres", report: "📄 Rapport",
+                date: "Date", applyTemplate: "✨ Appliquer Modèle", saveTemplate: "💾 Sauver Modèle",
+                period: "Période", week: "Semaine", start: "Début", dur: "Durée", lvl: "Niveau",
+                grp: "Groupe", subj: "Matière", addLesson: "Ajouter Séance +", break: "☕ Pause",
+                notes: "Notes du jour", thTime: "Temps", thLvl: "Niveau", thGrp: "Grp",
+                thSubj: "Matière", thTitle: "Titre (Modifier ✍️)", thCard: "Fiche",
+                setInfo: "📋 Infos En-tête", setDir: "Direction", setSchool: "École",
+                setTeacher: "Enseignant(e)", setSubj: "📚 Matières", setLvls: "🎓 Niveaux",
+                setDurs: "⏳ Durées", setBrks: "☕ Pauses", from: "De", to: "À",
+                show: "Afficher", savePdf: "Enregistrer PDF", breakLabel: "Pause",
+                confirmDel: "Supprimer ce jour ?", savedMsg: "Modèle enregistré !"
+            }
+        };
+
+        let store = {
+            subjects: JSON.parse(localStorage.getItem('subjects')) || ["العربية", "Français"],
+            levels: JSON.parse(localStorage.getItem('levels')) || ["1AEP"],
+            durations: JSON.parse(localStorage.getItem('durations')) || [30, 45, 55, 60],
+            breaks: JSON.parse(localStorage.getItem('breaks')) || [10, 15],
+            allDays: JSON.parse(localStorage.getItem('allDaysData')) || {},
+            templates: JSON.parse(localStorage.getItem('weekTemplates')) || {},
+            teacher: localStorage.getItem('teacherName') || "",
+            school: localStorage.getItem('schoolName') || "",
+            dir: localStorage.getItem('dirName') || ""
+        };
+
+        window.onload = () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('lessonDate').value = today;
+            document.getElementById('reportDate1').value = today;
+            document.getElementById('reportDate2').value = today;
+            applyLanguage();
+            renderLists(); 
+            loadDayData();
+            setInterval(() => { 
+                document.getElementById('liveClock').innerText = new Date().toLocaleTimeString(currentLang === 'ar' ? 'ar-MA' : 'fr-FR'); 
+            }, 1000);
+        };
+
+        function toggleLanguage() {
+            currentLang = (currentLang === 'ar') ? 'fr' : 'ar';
+            localStorage.setItem('lang', currentLang);
+            applyLanguage();
+            syncReport(); // لتحديث التقرير فوراً إذا كان مفتوحاً
+        }
+
+        function applyLanguage() {
+            const d = dict[currentLang];
+            document.getElementById('htmlTag').dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+            document.getElementById('htmlTag').lang = currentLang;
+            
+            document.getElementById('menuBtn').innerText = d.menu;
+            document.getElementById('navHome').innerText = d.home;
+            document.getElementById('navSettings').innerText = d.settings;
+            document.getElementById('navReport').innerText = d.report;
+            
+            document.getElementById('lblDate').innerText = d.date;
+            document.getElementById('btnApplyTemplate').innerText = d.applyTemplate;
+            document.getElementById('btnSaveTemplate').innerText = d.saveTemplate;
+            document.getElementById('lblPeriod').innerText = d.period;
+            document.getElementById('lblWeek').innerText = d.week;
+            
+            document.getElementById('lblStart').innerText = d.start;
+            document.getElementById('lblDur').innerText = d.dur;
+            document.getElementById('lblLvl').innerText = d.lvl;
+            document.getElementById('lblGrp').innerText = d.grp;
+            document.getElementById('lblSubj').innerText = d.subj;
+            document.getElementById('btnAddLesson').innerText = d.addLesson;
+            document.getElementById('btnBreak').innerText = d.break;
+            document.getElementById('lblNotes').innerText = d.notes;
+
+            document.getElementById('thTime').innerText = d.thTime;
+            document.getElementById('thLevel').innerText = d.thLvl;
+            document.getElementById('thGroup').innerText = d.thGrp;
+            document.getElementById('thSubject').innerText = d.thSubj;
+            document.getElementById('thTitle').innerText = d.thTitle;
+            document.getElementById('thCard').innerText = d.thCard;
+
+            document.getElementById('setInfoTitle').innerText = d.setInfo;
+            document.getElementById('lblDir').innerText = d.setDir;
+            document.getElementById('lblSchool').innerText = d.setSchool;
+            document.getElementById('lblTeacher').innerText = d.setTeacher;
+            document.getElementById('setSubj').innerText = d.setSubj;
+            document.getElementById('setLvls').innerText = d.setLvls;
+            document.getElementById('setDurs').innerText = d.setDurs;
+            document.getElementById('setBrks').innerText = d.setBrks;
+
+            document.getElementById('lblFrom').innerText = d.from;
+            document.getElementById('lblTo').innerText = d.to;
+            document.getElementById('btnShow').innerText = d.show;
+            document.getElementById('btnSavePdf').innerText = d.savePdf;
+            
+            loadDayData(); // إعادة تحميل البيانات لضمان توافق التسميات
+        }
+
+        // --- منطق البيانات والوظائف --- (نفس منطقك القوي السابق)
+        function saveDayData() {
+            const date = document.getElementById('lessonDate').value; if(!date) return;
+            const rows = [];
+            document.querySelectorAll("#mainTbody tr").forEach(tr => {
+                const isB = tr.classList.contains('break-row');
+                rows.push({
+                    time: tr.cells[0].innerText,
+                    level: isB ? "" : tr.cells[1].innerText,
+                    group: isB ? "" : tr.cells[2].innerText,
+                    subject: isB ? dict[currentLang].breakLabel : tr.cells[3].innerText,
+                    title: isB ? "" : tr.cells[4].innerText,
+                    card: isB ? "" : tr.cells[5].innerText,
+                    isBreak: isB
+                });
+            });
+            store.allDays[date] = { period: document.getElementById('period').value, week: document.getElementById('week').value, notes: document.getElementById('generalNotes').value, lessons: rows };
+            localStorage.setItem('allDaysData', JSON.stringify(store.allDays));
+        }
+
+        function loadDayData() {
+            const date = document.getElementById('lessonDate').value;
+            const data = store.allDays[date] || { period: "1", week: "1", notes: "", lessons: [] };
+            document.getElementById('period').value = data.period;
+            document.getElementById('week').value = data.week;
+            document.getElementById('generalNotes').value = data.notes;
+            const tbody = document.getElementById("mainTbody"); tbody.innerHTML = "";
+            data.lessons.forEach(l => {
+                const row = tbody.insertRow();
+                if(l.isBreak) {
+                    row.className = "break-row";
+                    row.innerHTML = `<td>${l.time}</td><td colspan="5">${dict[currentLang].break}</td><td><button class="btn-danger" onclick="removeRow(this)">x</button></td>`;
+                } else {
+                    row.innerHTML = `<td>${l.time}</td><td>${l.level}</td><td>${l.group}</td><td>${l.subject}</td><td class="editable-cell" contenteditable="true" onblur="saveDayData()">${l.title || ""}</td><td class="editable-cell" contenteditable="true" onblur="saveDayData()">${l.card || ""}</td><td><button class="btn-danger" onclick="removeRow(this)">x</button></td>`;
+                }
+            });
+        }
+
+        function syncReport() {
+            saveDayData();
+            const d1 = document.getElementById('reportDate1').value;
+            const d2 = document.getElementById('reportDate2').value;
+            const container = document.getElementById('reportContainer');
+            container.innerHTML = "";
+            let hasData = false;
+            Object.keys(store.allDays).filter(d => d >= d1 && d <= d2).sort().forEach(date => {
+                hasData = true;
+                const d = store.allDays[date];
+                const dateObj = new Date(date);
+                const label = dateObj.toLocaleDateString(currentLang === 'ar' ? 'ar-MA' : 'fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                container.innerHTML += `
+                <div class="report-day-box">
+                    <div class="report-header-info"><span>📅 ${label}</span><span>${dict[currentLang].period}: ${d.period} | ${dict[currentLang].week}: ${d.week}</span></div>
+                    <table>
+                        <thead><tr><th>${dict[currentLang].thTime}</th><th>${dict[currentLang].thLvl}</th><th>${dict[currentLang].thGrp}</th><th>${dict[currentLang].thSubj}</th><th>${dict[currentLang].thTitle}</th><th>${dict[currentLang].thCard}</th></tr></thead>
+                        <tbody>${d.lessons.map(l => `<tr class="${l.isBreak ? 'break-row' : ''}"><td>${l.time}</td>${l.isBreak ? `<td colspan="5">${dict[currentLang].breakLabel}</td>` : `<td>${l.level}</td><td>${l.group}</td><td>${l.subject}</td><td>${l.title || ""}</td><td>${l.card || ""}</td>`}</tr>`).join('')}</tbody>
+                    </table>
+                    ${d.notes ? `<div style="margin-top:10px; font-size:0.85rem; border-right:3px solid var(--accent); padding-right:10px; border-left:${currentLang==='fr'?'3px solid var(--accent)':'none'};"><strong>${dict[currentLang].notes}:</strong> ${d.notes}</div>` : ""}
+                </div>`;
+            });
+            if(hasData) {
+                document.getElementById('fDir').innerText = dict[currentLang].setDir + ": " + store.dir;
+                document.getElementById('fSchool').innerText = dict[currentLang].setSchool + ": " + store.school;
+                document.getElementById('fTeacher').innerText = dict[currentLang].setTeacher + ": " + store.teacher;
+            }
+        }
+
+        function processEntry(type) {
+            const tF = document.getElementById("tFrom").value; if(!tF) return;
+            const tbody = document.getElementById("mainTbody"); const row = tbody.insertRow();
+            let dur = (type==='lesson') ? document.getElementById("durationSelect").value : document.getElementById("breakSelect").value;
+            let tT = calculateEndTime(tF, dur);
+            if(type==='lesson') {
+                row.innerHTML = `<td>${tF}-${tT}</td><td>${document.getElementById("levelSelect").value}</td><td>${document.getElementById("groupSelect").value}</td><td>${document.getElementById("subjectSelect").value}</td><td class="editable-cell" contenteditable="true" onblur="saveDayData()"></td><td class="editable-cell" contenteditable="true" onblur="saveDayData()"></td><td><button class="btn-danger" onclick="removeRow(this)">x</button></td>`;
+            } else {
+                row.className = "break-row";
+                row.innerHTML = `<td>${tF}-${tT}</td><td colspan="5">${dict[currentLang].break}</td><td><button class="btn-danger" onclick="removeRow(this)">x</button></td>`;
+            }
+            document.getElementById("tFrom").value = tT; saveDayData();
+        }
+
+        function calculateEndTime(s, dur) { let [h, m] = s.split(':').map(Number); let d = new Date(); d.setHours(h); d.setMinutes(m + parseInt(dur)); return d.toTimeString().slice(0, 5); }
+        
+        function renderLists() {
+            document.getElementById('subjectSelect').innerHTML = store.subjects.map(s => `<option>${s}</option>`).join('');
+            document.getElementById('levelSelect').innerHTML = store.levels.map(l => `<option>${l}</option>`).join('');
+            document.getElementById('durationSelect').innerHTML = store.durations.map(d => `<option value="${d}">${d} min</option>`).join('');
+            document.getElementById('breakSelect').innerHTML = store.breaks.map(b => `<option value="${b}">${b} min</option>`).join('');
+            
+            document.getElementById('subCont').innerHTML = store.subjects.map((s,i) => `<div class="item-row">${s}<button class="btn-danger" onclick="deleteItem('subjects',${i})">x</button></div>`).join('');
+            document.getElementById('lvlCont').innerHTML = store.levels.map((l,i) => `<div class="item-row">${l}<button class="btn-danger" onclick="deleteItem('levels',${i})">x</button></div>`).join('');
+            document.getElementById('durCont').innerHTML = store.durations.map((d,i) => `<div class="item-row">${d} min<button class="btn-danger" onclick="deleteItem('durations',${i})">x</button></div>`).join('');
+            document.getElementById('brkCont').innerHTML = store.breaks.map((b,i) => `<div class="item-row">${b} min<button class="btn-danger" onclick="deleteItem('breaks',${i})">x</button></div>`).join('');
+            
+            localStorage.setItem('subjects', JSON.stringify(store.subjects));
+            localStorage.setItem('levels', JSON.stringify(store.levels));
+            localStorage.setItem('durations', JSON.stringify(store.durations));
+            localStorage.setItem('breaks', JSON.stringify(store.breaks));
+        }
+
+        function addItem(k, id) { const v = document.getElementById(id).value; if(v) { store[k].push(v); document.getElementById(id).value=""; renderLists(); } }
+        function deleteItem(k, i) { store[k].splice(i,1); renderLists(); }
+        function saveSettings() {
+            store.teacher = document.getElementById('teacherName').value; store.school = document.getElementById('schoolName').value; store.dir = document.getElementById('dirName').value;
+            localStorage.setItem('teacherName', store.teacher); localStorage.setItem('schoolName', store.school); localStorage.setItem('dirName', store.dir);
+        }
+        function removeRow(btn) { btn.closest('tr').remove(); saveDayData(); }
+        function switchTab(id) { document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); document.getElementById(id).classList.add('active'); if(id==='report-tab') syncReport(); }
+        function applyDayTemplate() {
+            const date = document.getElementById('lessonDate').value; const day = new Date(date).getDay();
+            if(store.templates[day]) { store.allDays[date] = { period: "1", week: "1", notes: "", lessons: JSON.parse(JSON.stringify(store.templates[day])) }; loadDayData(); saveDayData(); }
+        }
+        function saveAsDayTemplate() {
+            const date = document.getElementById('lessonDate').value; const day = new Date(date).getDay();
+            const lessons = (store.allDays[date] || {}).lessons || [];
+            store.templates[day] = lessons.map(l => ({...l, title: "", card: ""}));
+            localStorage.setItem('weekTemplates', JSON.stringify(store.templates)); alert(dict[currentLang].savedMsg);
+        }
+        function deleteCurrentDay() { if(confirm(dict[currentLang].confirmDel)) { delete store.allDays[document.getElementById('lessonDate').value]; localStorage.setItem('allDaysData', JSON.stringify(store.allDays)); loadDayData(); } }
+    </script>
+</body>
+</html>
